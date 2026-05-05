@@ -74,7 +74,11 @@ class SearchDialog(ctk.CTkToplevel):
             self._listbox.insert(tk.END, f"{item['symbol']}  -  {item['name']}")
 
     def _on_item_doubleclick(self, event: tk.Event) -> None:
-        cursor = self._listbox.index(tk.INSERT)
+        idx_str = self._listbox.index(tk.INSERT)
+        try:
+            cursor = int(idx_str)
+        except (ValueError, TypeError):
+            return
         if 0 <= cursor < len(self._results):
             symbol = self._results[cursor]["symbol"]
             self.destroy()

@@ -61,8 +61,15 @@ class YahooFinanceService:
         try:
             ticker = yf.Ticker(symbol)
             info = ticker.info
-            if not info or not isinstance(info, dict):
-                return None
+            if not isinstance(info, dict) or not info:
+                # 404 / ungültiges Symbol: gib leeres Objekt mit Fehlermeldung zurueck
+                return StockQuote(symbol=symbol.upper(), error="Kursdaten nicht gefunden. Bitte ueberpruefe das Aktien-Symbol.")
+
+            # yfinance gibt auch fuer ungültige Symbole ein dict zurueck (z.B. {'trailingPegRatio': None})
+            # Prüfe auf echte Kursdaten-Keys
+            price_keys = ("currentPrice", "regularMarketPrice", "previousClose", "regularMarketPreviousClose")
+            if not any(info.get(k) for k in price_keys):
+                return StockQuote(symbol=symbol.upper(), error="Kursdaten nicht gefunden. Bitte ueberpruefe das Aktien-Symbol.")
 
             current_price = info.get("currentPrice") or info.get("regularMarketPrice")
             previous_close = info.get("previousClose")
@@ -100,7 +107,7 @@ class YahooFinanceService:
             )
         except Exception as exc:
             logger.error("Fehler beim Abrufen von Kursdaten fuer %s: %s", symbol, exc)
-            return None
+            return StockQuote(symbol=symbol.upper(), error=f"Kursdaten konnten nicht geladen werden: {exc}")
 
     def fetch_chart(self, symbol: str, period: str = "1mo") -> StockChart:
         """Historische Kursdaten fuer ein Chart abrufen."""

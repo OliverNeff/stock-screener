@@ -38,8 +38,17 @@ class DetailPanel(ctk.CTkFrame):
         self._canvas: FigureCanvasTkAgg | None = None
         self._current_symbol: str | None = None
         self._current_chart: StockChart | None = None
+        self._destroyed = False
+        self._top = parent.winfo_toplevel()
 
         self._build_ui()
+
+    def _widget_alive(self, widget: tk.Widget) -> bool:
+        """Prueft ob ein Tkinter-Widget noch existiert."""
+        try:
+            return widget.winfo_exists()
+        except tk.TclError:
+            return False
 
     def _build_ui(self) -> None:
         # Container für alles
@@ -59,6 +68,12 @@ class DetailPanel(ctk.CTkFrame):
             text_color=COLORS["accent"],
         )
         self._lbl_symbol.pack(anchor=tk.W, padx=12, pady=(8, 0))
+
+        self._error_lbl = ctk.CTkLabel(
+            self._info_frame, text="", font=FONTS["small"],
+            text_color=COLORS["negative"], wraplength=500,
+        )
+        self._error_lbl.pack(anchor=tk.W, padx=12, pady=(4, 0))
 
         self._lbl_price = ctk.CTkLabel(
             self._info_frame, text="--", font=FONTS["large"],
@@ -110,7 +125,13 @@ class DetailPanel(ctk.CTkFrame):
 
     def update_quote(self, quote: StockQuote) -> None:
         """Kursdetails aktualisieren."""
+        if self._destroyed:
+            return
         self._current_symbol = quote.symbol
+
+        if quote.error:
+            self._show_error(quote)
+            return
 
         name_short = quote.name[:30] + ("..." if len(quote.name) > 30 else "")
         self._lbl_symbol.configure(text=f"{quote.symbol}  –  {name_short}")
@@ -126,6 +147,29 @@ class DetailPanel(ctk.CTkFrame):
             self._lbl_change.configure(text_color=color)
 
         self._update_info_grid(quote)
+        self._error_lbl.configure(text="")
+
+    def _show_error(self, quote: StockQuote) -> None:
+        """Fehlermeldung anzeigen."""
+        self._lbl_symbol.configure(text=quote.symbol)
+        self._lbl_price.configure(text="--")
+        self._lbl_change.configure(text="--")
+
+        for child in self._info_frame.winfo_children()[2:]:
+            child.destroy()
+        self._error_lbl.configure(text=quote.error)
+
+        for child in self._info_grid.winfo_children():
+            child.destroy()
+
+        self._axis.clear()
+        self._axis.set_facecolor(COLORS["bg"])
+        self._figure.set_facecolor(COLORS["bg"])
+        self._axis.text(0.5, 0.5, quote.error,
+                        ha="center", va="center", fontsize=12,
+                        color=COLORS["negative"])
+        self._figure.tight_layout()
+        self._recreate_canvas()
 
     def _get_prev_close(self) -> float:
         """Vorheriger Schließungskurs (interner Hilfswert)."""
@@ -166,6 +210,8 @@ class DetailPanel(ctk.CTkFrame):
 
     def update_chart(self, chart: StockChart) -> None:
         """Chart aktualisieren."""
+        if self._destroyed:
+            return
         self._current_chart = chart
 
         self._axis.clear()
@@ -211,15 +257,12 @@ class DetailPanel(ctk.CTkFrame):
 
         self._figure.tight_layout()
 
-        # Canvas neu erstellen
-        if self._canvas:
-            self._canvas.get_tk_widget().destroy()
-        self._canvas = FigureCanvasTkAgg(self._figure, master=self._chart_frame)
-        self._canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        self._canvas.draw_idle()
+        self._recreate_canvas()
 
     def show_placeholder(self) -> None:
         """Leeren Zustand anzeigen."""
+        if self._destroyed:
+            return
         self._current_symbol = None
         self._current_chart = None
 
@@ -235,8 +278,18 @@ class DetailPanel(ctk.CTkFrame):
                         color=COLORS["fg_secondary"])
         self._figure.tight_layout()
 
-        if self._canvas:
+        self._recreate_canvas()
+
+    def _recreate_canvas(self) -> None:
+        """Canvas-Widget neu erstellen mit sicherer Zerstuerung des alten Widgets."""
+        if self._destroyed:
+            return
+        if self._canvas and self._widget_alive(self._canvas.get_tk_widget()):
             self._canvas.get_tk_widget().destroy()
-        self._canvas = FigureCanvasTkAgg(self._figure, master=self._chart_frame)
-        self._canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            self._canvas = None
+        try:
+            self._canvas = FigureCanvasTkAgg(self._figure, master=self._chart_frame)
+            self._canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        except tk.TclError:
+            return
         self._canvas.draw_idle()

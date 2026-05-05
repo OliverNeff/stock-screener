@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from stock_screener.services.yahoo_finance import YahooFinanceService
+from stock_screener.models.stock import StockQuote
 from stock_screener.utils import format_currency, format_percentage, format_volume
 
 
@@ -78,14 +79,17 @@ class TestYahooFinanceService:
     def test_fetch_quote_invalid_symbol(
         self, mock_ticker_cls: MagicMock, service: YahooFinanceService
     ) -> None:
-        """Ein ungültiges Symbol sollte None zurückliefern."""
+        """Ein ungültiges Symbol sollte einen StockQuote mit Fehlermeldung zurückliefern."""
         mock_ticker = MagicMock()
         mock_ticker.info = {}
         mock_ticker_cls.return_value = mock_ticker
 
         quote = service.fetch_quote("ZZZZZZ")
 
-        assert quote is None
+        assert isinstance(quote, StockQuote)
+        assert quote.symbol == "ZZZZZZ"
+        assert quote.error is not None
+        assert "nicht gefunden" in quote.error
 
     @patch("stock_screener.services.yahoo_finance.yf.Ticker")
     def test_fetch_chart_valid_symbol(

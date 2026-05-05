@@ -24,6 +24,7 @@ class StockQuote:
     week52_low: float | None = None
     currency: str = "USD"
     last_updated: datetime | None = None
+    error: str | None = None
 
 
 @dataclass

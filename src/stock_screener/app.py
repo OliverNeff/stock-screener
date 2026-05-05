@@ -93,7 +93,8 @@ class App:
 
     def _on_add_to_watchlist(self, symbol: str) -> None:
         """Aktie zur Watchlist hinzufügen."""
-        symbol = symbol.upper().strip()
+        # Nur das Symbol extrahieren (vor dem ersten " - " Trenner)
+        symbol = symbol.strip().upper().split(" - ")[0].strip()
         if not symbol:
             return
 
