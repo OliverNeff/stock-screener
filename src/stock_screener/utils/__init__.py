@@ -16,6 +16,24 @@ def set_frame_color(widget: ctk.CTkBaseClass, color: str) -> None:
         widget.configure(fg_color=color)
 
 
+def set_border_color(widget: ctk.CTkBaseClass, color: str | None) -> None:
+    """Setzt einen linken Rahmen (Farbakzent) auf ein Frame-Widget."""
+    if not isinstance(widget, ctk.CTkFrame):
+        return
+    if color is None:
+        widget.configure(fg_color=COLORS.get("bg", "#2B2B2B"))
+    else:
+        # Linken Rahmen als separaten Frame einbetten
+        for child in widget.winfo_children():
+            if isinstance(child, ctk.CTkFrame):
+                child.destroy()
+                break
+        bar = ctk.CTkFrame(widget, fg_color=color, width=3)
+        bar.pack(side=tk.LEFT, fill=tk.Y)
+        bar.configure(height=widget.cget("height") if widget.cget("height") else 52)
+        widget.configure(fg_color=color)
+
+
 def format_currency(value: float | None, currency: str = "USD") -> str:
     """Einen Geldbetrag formatieren."""
     if value is None:

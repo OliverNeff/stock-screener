@@ -66,6 +66,7 @@ class App:
             on_select=self._on_stock_select,
             on_search=self._on_show_search,
             on_refresh=self._on_refresh_all,
+            on_delete=self._on_delete_from_watchlist,
         )
         self._watchlist_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 4), pady=4)
 
@@ -204,6 +205,26 @@ class App:
                 json.dump(data, f, indent=2)
         except Exception as exc:
             logger.warning("Watchlist konnte nicht gespeichert werden: %s", exc)
+
+    def _on_delete_from_watchlist(self) -> None:
+        """Aktie aus der Watchlist entfernen."""
+        if not self.selected_symbol:
+            return
+
+        symbol = self.selected_symbol
+        self.watchlist = [item for item in self.watchlist if item.symbol != symbol]
+        self._save_watchlist()
+        self._update_watchlist_display()
+
+        if self.selected_symbol == symbol:
+            self.selected_symbol = None
+            self._watchlist_panel.select_stock("")
+            self._detail_panel.show_placeholder()
+
+        # Prüfen ob noch Einträge da sind
+        if not self.watchlist:
+            self._watchlist_panel._btn_delete.configure(state=tk.DISABLED)
+            self._watchlist_panel._selected_symbol = None
 
     def run(self) -> None:
         """Anwendung starten."""

@@ -20,6 +20,8 @@ COLORS: dict[str, str] = {
     "accent": "#00D1FF",
     "positive": "#00E676",
     "negative": "#FF5252",
+    "danger": "#C62828",
+    "danger_hover": "#E53935",
     "border": "#3B3B3B",
     "chart_grid": "#3B3B3B",
     "chart_line": "#00D1FF",

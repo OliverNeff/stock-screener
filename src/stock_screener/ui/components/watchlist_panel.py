@@ -21,11 +21,13 @@ class WatchlistPanel(ctk.CTkFrame):
         on_select: Callable[[str], None],
         on_search: Callable[[], None],
         on_refresh: Callable[[], None],
+        on_delete: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(parent, fg_color=COLORS["bg_secondary"])
         self._on_select = on_select
         self._on_search = on_search
         self._on_refresh = on_refresh
+        self._on_delete_callback = on_delete
         self._items: dict[str, ctk.CTkFrame] = {}
         self._selected_symbol: str | None = None
 
@@ -50,6 +52,17 @@ class WatchlistPanel(ctk.CTkFrame):
         )
         btn_refresh.pack(side=tk.RIGHT, padx=4)
         btn_refresh.configure(command=self._on_refresh)
+
+        btn_delete = ctk.CTkButton(
+            frm_header, text="−", width=36, height=28,
+            font=("Segoe UI", 14, "bold"),
+            fg_color=COLORS["bg_secondary"], hover_color=COLORS["danger_hover"],
+            text_color=COLORS["fg"],
+            state=tk.DISABLED,
+        )
+        btn_delete.pack(side=tk.RIGHT, padx=4)
+        btn_delete.configure(command=self._on_delete)
+        self._btn_delete = btn_delete
 
         # Suche
         frm_search = ctk.CTkFrame(self, fg_color=COLORS["bg"])
@@ -95,16 +108,32 @@ class WatchlistPanel(ctk.CTkFrame):
         # Alte Auswahl aufheben
         for sym, widget in self._items.items():
             set_frame_color(widget, COLORS["bg_secondary"])
-            # Labels zuruecksetzen
-            for child in widget.winfo_children():
-                if isinstance(child, ctk.CTkLabel):
-                    child.configure(fg_color=COLORS["bg_secondary"])
 
         # Neue Auswahl
         widget = self._items.get(symbol)
         if widget:
-            set_frame_color(widget, COLORS["hover"])
+            set_frame_color(widget, COLORS["bg"])
             self._selected_symbol = symbol
+            self._btn_delete.configure(state=tk.NORMAL)
+            self._btn_delete.configure(text_color=COLORS["danger"])
+        else:
+            self._btn_delete.configure(state=tk.DISABLED)
+            self._btn_delete.configure(text_color=COLORS["fg"])
+
+    def delete_stock(self, symbol: str) -> None:
+        """Aktie aus der Watchlist entfernen."""
+        widget = self._items.pop(symbol, None)
+        if widget:
+            widget.destroy()
+        if self._selected_symbol == symbol:
+            self._selected_symbol = None
+            self._btn_delete.configure(state=tk.DISABLED)
+            self._btn_delete.configure(text_color=COLORS["fg"])
+
+    def _on_delete(self) -> None:
+        """Löschen-Callback."""
+        if self._selected_symbol and self._on_delete_callback:
+            self._on_delete_callback()
 
     def update_quote(self, symbol: str, quote: StockQuote) -> None:
         """Kursdaten für einen Watchlist-Eintrag aktualisieren."""
